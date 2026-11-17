@@ -12,6 +12,8 @@ Agent 無法在互動式密碼提示中輸入密碼，因此需要事先設好�
 | `Enable-SshKeyLogin.ps1` | **遠端 Windows** 主機 | 系統管理員（PowerShell 7） | 安裝／啟動 OpenSSH Server、把公鑰放進正確的 authorized_keys、設定 ACL 與防火牆 |
 | `enable-ssh-key-login.sh` | **遠端 Linux** 主機 | `sudo` | 安裝 openssh-server（若缺）、加入公鑰、確保開啟公鑰登入、重啟服務 |
 
+**不帶參數直接執行也可以**：兩支 PowerShell 腳本會在執行時詢問缺少的必要資料（見各節說明）。Linux 腳本則必須帶參數，未帶時會顯示用法後結束。
+
 ## 需求
 
 - 本機：Windows、PowerShell 7（`winget install Microsoft.PowerShell`）、OpenSSH Client（`ssh-keygen`）。
@@ -30,7 +32,7 @@ Windows 上的 OpenSSH（Client 與 Server）來自 [Win32-OpenSSH](https://gith
 pwsh .\New-SshKey.ps1 -Target 192.168.10.20 -User admin -Alias lab-win
 ```
 
-參數都可省略，省略時會逐一詢問：
+參數都可省略，直接執行 `pwsh .\New-SshKey.ps1` 時會逐一詢問（直接按 Enter 採用預設值；Target 必填，空白會重問）：
 
 | 參數 | 說明 | 預設 |
 |---|---|---|
@@ -61,6 +63,8 @@ pwsh .\New-SshKey.ps1 -Target 192.168.10.20 -User admin -Alias lab-win
 | `-KeyFile` | `Auto`（預設）／`Admin`／`User`，決定公鑰寫入哪個檔案 |
 | `-AllowFrom` | 選用，逗號分隔的來源 IP 或網段，例如 `192.168.10.12,10.10.0.0/24` |
 
+直接執行 `.\Enable-SshKeyLogin.ps1` 不帶參數時，PowerShell 會依序提示輸入 `PublicKey`（貼上步驟 1 印出的整行公鑰）與 `User`。`-KeyFile`、`-AllowFrom` 不會詢問，未指定時分別採用 `Auto` 與「不限制來源」。
+
 腳本會依序：
 
 1. 沒有 `sshd` 服務才安裝 OpenSSH Server：
@@ -83,6 +87,8 @@ pwsh .\New-SshKey.ps1 -Target 192.168.10.20 -User admin -Alias lab-win
 chmod +x enable-ssh-key-login.sh
 sudo ./enable-ssh-key-login.sh admin 'ssh-ed25519 AAAA... user-at-PC-for-lab-linux' [allow-from-cidr]
 ```
+
+此腳本**不會**詢問：帳號與公鑰兩個參數都必須帶，少於兩個時會顯示用法後結束。第三個參數（允許的來源網段）可省略。
 
 腳本會依序：
 
