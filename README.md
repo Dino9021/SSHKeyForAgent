@@ -18,6 +18,8 @@ Agent 無法在互動式密碼提示中輸入密碼，因此需要事先設好�
 - 遠端 Windows：PowerShell 7、系統管理員權限；登入帳號必須已在該機器登入過一次（要有使用者設定檔）。
 - 遠端 Linux：`bash`、`systemd`；套件管理器為 `apt-get` 或 `dnf`（其他發行版需先自行安裝 openssh-server）。
 
+Windows 上的 OpenSSH（Client 與 Server）來自 [Win32-OpenSSH](https://github.com/PowerShell/Win32-OpenSSH)。`Enable-SshKeyLogin.ps1` 只在找不到 `sshd` 服務時才安裝 Windows 內建版本；若已從 Win32-OpenSSH 的 Releases 安裝較新版本，腳本會直接沿用。
+
 兩支 PowerShell 腳本若在 Windows PowerShell 5.1 中啟動，會自動改用 `pwsh` 重新執行；找不到 `pwsh` 時會停止並提示安裝方式。
 
 ## 使用流程
