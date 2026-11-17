@@ -23,11 +23,45 @@ if ($PublicKey -notmatch '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp(256|384|521)) [
 }
 
 # --- 1. OpenSSH server: install only if there is no sshd service at all (any edition counts) ---
+# Prefers the latest release MSI from https://github.com/PowerShell/Win32-OpenSSH; only when that MSI
+# cannot be obtained and verified does it fall back to the Windows built-in capability.
+function Get-Win32OpenSshMsi {
+    # Returns the path of a downloaded, sha256-verified MSI; throws on any failure.
+    $arch = switch ([string][Runtime.InteropServices.RuntimeInformation]::OSArchitecture) {
+        'X64' { 'Win64' } 'Arm64' { 'ARM64' } 'X86' { 'Win32' }
+        default { throw "unsupported OS architecture: $_" }
+    }
+    $rel   = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/Win32-OpenSSH/releases/latest' -TimeoutSec 30
+    $asset = @($rel.assets | Where-Object { $_.name -match "^OpenSSH-$arch-v[\d.]+\.msi$" })
+    if ($asset.Count -ne 1) { throw "expected one OpenSSH-$arch-v*.msi in release $($rel.tag_name), found $($asset.Count)" }
+    $asset = $asset[0]
+    if ($asset.digest -notmatch '^sha256:([0-9a-f]{64})$') { throw "asset $($asset.name) has no sha256 digest to verify against" }
+    $want = $Matches[1]
+    $msi  = Join-Path ([IO.Path]::GetTempPath()) $asset.name
+    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $msi -TimeoutSec 300
+    $got = (Get-FileHash -LiteralPath $msi -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($got -ne $want) { Remove-Item -LiteralPath $msi; throw "sha256 mismatch for $($asset.name): expected $want, got $got" }
+    Write-Host "Downloaded $($asset.name) (release $($rel.tag_name)), sha256 verified."
+    return $msi
+}
+
 $svc = Get-Service sshd -ErrorAction SilentlyContinue
 if (-not $svc) {
-    Write-Host 'No sshd service found - installing OpenSSH Server (Windows capability)...'
-    $cap = Get-WindowsCapability -Online -Name 'OpenSSH.Server*'
-    Add-WindowsCapability -Online -Name $cap.Name | Out-Null
+    Write-Host 'No sshd service found - fetching the latest Win32-OpenSSH release from GitHub...'
+    $msi = $null
+    try { $msi = Get-Win32OpenSshMsi }
+    catch { Write-Warning "Could not get the Win32-OpenSSH MSI ($($_.Exception.Message))." }
+    if ($msi) {
+        Write-Host "Installing $msi ..."
+        $p = Start-Process msiexec.exe -ArgumentList '/i', "`"$msi`"", '/qn', '/norestart' -Wait -PassThru
+        Remove-Item -LiteralPath $msi
+        if ($p.ExitCode -notin 0, 3010) { Write-Error "msiexec failed with exit code $($p.ExitCode)"; exit 1 }
+    } else {
+        Write-Host 'Falling back to the Windows built-in OpenSSH Server (Windows capability)...'
+        $cap = Get-WindowsCapability -Online -Name 'OpenSSH.Server*'
+        Add-WindowsCapability -Online -Name $cap.Name | Out-Null
+    }
+    if (-not (Get-Service sshd -ErrorAction SilentlyContinue)) { Write-Error 'Install finished but no sshd service exists.'; exit 1 }
 } else {
     Write-Host "sshd already installed: $((Get-CimInstance Win32_Service -Filter "Name='sshd'").PathName)"
 }

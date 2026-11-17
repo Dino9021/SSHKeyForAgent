@@ -18,7 +18,7 @@ Agent 無法在互動式密碼提示中輸入密碼，因此需要事先設好�
 - 遠端 Windows：PowerShell 7、系統管理員權限；登入帳號必須已在該機器登入過一次（要有使用者設定檔）。
 - 遠端 Linux：`bash`、`systemd`；套件管理器為 `apt-get` 或 `dnf`（其他發行版需先自行安裝 openssh-server）。
 
-Windows 上的 OpenSSH（Client 與 Server）來自 [Win32-OpenSSH](https://github.com/PowerShell/Win32-OpenSSH)。`Enable-SshKeyLogin.ps1` 只在找不到 `sshd` 服務時才安裝 Windows 內建版本；若已從 Win32-OpenSSH 的 Releases 安裝較新版本，腳本會直接沿用。
+Windows 上的 OpenSSH（Client 與 Server）來自 [Win32-OpenSSH](https://github.com/PowerShell/Win32-OpenSSH)。`Enable-SshKeyLogin.ps1` 在遠端找不到 `sshd` 服務時，會從 Win32-OpenSSH 的最新 Release 下載 MSI 安裝；只有下載不到時才改裝 Windows 內建版本。已經有 `sshd`（任何版本）就直接沿用、不重裝。
 
 兩支 PowerShell 腳本若在 Windows PowerShell 5.1 中啟動，會自動改用 `pwsh` 重新執行；找不到 `pwsh` 時會停止並提示安裝方式。
 
@@ -63,7 +63,10 @@ pwsh .\New-SshKey.ps1 -Target 192.168.10.20 -User admin -Alias lab-win
 
 腳本會依序：
 
-1. 沒有 `sshd` 服務才安裝 OpenSSH Server（Windows capability）；設為自動啟動並啟動。
+1. 沒有 `sshd` 服務才安裝 OpenSSH Server：
+   - 優先從 [Win32-OpenSSH 最新 Release](https://github.com/PowerShell/Win32-OpenSSH/releases/latest) 下載符合本機架構的 MSI（`OpenSSH-Win64/ARM64/Win32-v*.msi`），以 GitHub 提供的 SHA256 核對後靜默安裝。
+   - 無法連上 GitHub、找不到對應檔案或 SHA256 核對失敗時，才改裝 Windows 內建版本（Windows capability）。
+   - 安裝後設為自動啟動並啟動。
 2. 解析帳號 SID，判斷是否為本機 Administrators 成員。
 3. 寫入公鑰（ASCII、不重複）並鎖定 ACL：
    - 帳號是系統管理員且 `sshd_config` 使用 `administrators_authorized_keys` → 寫入 `%ProgramData%\ssh\administrators_authorized_keys`
