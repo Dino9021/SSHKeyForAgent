@@ -1,14 +1,24 @@
 #!/usr/bin/env bash
 # enable-ssh-key-login.sh - run on the REMOTE Linux host with sudo.
 # Usage: sudo ./enable-ssh-key-login.sh <user> '<public key line>' [allow-from-cidr]
+#        sudo ./enable-ssh-key-login.sh      (no arguments: asks for each value)
 set -euo pipefail
 
 if [[ $EUID -ne 0 ]]; then echo "Run with sudo." >&2; exit 1; fi
-if [[ $# -lt 2 ]]; then echo "Usage: sudo $0 <user> '<public key line>' [allow-from-cidr]" >&2; exit 1; fi
 
-user="$1"
-pubkey="$(printf '%s' "$2" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+user="${1:-}"
+rawkey="${2:-}"
 allow="${3:-}"
+
+# Missing user or key: ask on a terminal; without one, print usage and stop.
+if [[ -z "$user" || -z "$rawkey" ]]; then
+    if [[ ! -t 0 ]]; then echo "Usage: sudo $0 <user> '<public key line>' [allow-from-cidr]" >&2; exit 1; fi
+    while [[ -z "$user" ]]; do read -r -p "Login account on this host: " user; done
+    while [[ -z "$rawkey" ]]; do read -r -p "Public key line (the one line printed by New-SshKey.ps1): " rawkey; done
+    if [[ $# -lt 3 ]]; then read -r -p "Allow SSH only from (CIDR, Enter = no restriction): " allow; fi
+fi
+
+pubkey="$(printf '%s' "$rawkey" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 
 home="$(getent passwd "$user" | cut -d: -f6 || true)"
 if [[ -z "$home" ]]; then echo "No such user: $user" >&2; exit 1; fi

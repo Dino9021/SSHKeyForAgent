@@ -12,7 +12,7 @@ Agent 無法在互動式密碼提示中輸入密碼，因此需要事先設好�
 | `Enable-SshKeyLogin.ps1` | **遠端 Windows** 主機 | 系統管理員（PowerShell 7） | 安裝／啟動 OpenSSH Server、把公鑰放進正確的 authorized_keys、設定 ACL 與防火牆 |
 | `enable-ssh-key-login.sh` | **遠端 Linux** 主機 | `sudo` | 安裝 openssh-server（若缺）、加入公鑰、確保開啟公鑰登入、重啟服務 |
 
-**不帶參數直接執行也可以**：兩支 PowerShell 腳本會在執行時詢問缺少的必要資料（見各節說明）。Linux 腳本則必須帶參數，未帶時會顯示用法後結束。
+**不帶參數直接執行也可以**：三支腳本都會在執行時詢問缺少的必要資料（見各節說明）。
 
 ## 需求
 
@@ -88,7 +88,7 @@ chmod +x enable-ssh-key-login.sh
 sudo ./enable-ssh-key-login.sh admin 'ssh-ed25519 AAAA... user-at-PC-for-lab-linux' [allow-from-cidr]
 ```
 
-此腳本**不會**詢問：帳號與公鑰兩個參數都必須帶，少於兩個時會顯示用法後結束。第三個參數（允許的來源網段）可省略。
+參數也可省略，直接執行 `sudo ./enable-ssh-key-login.sh` 時會依序詢問帳號、公鑰（貼上步驟 1 印出的整行）與允許的來源網段（直接按 Enter 表示不限制）；帳號與公鑰空白會重問。若不是在終端機執行（例如透過管線或排程），缺少帳號或公鑰時會顯示用法後結束。
 
 腳本會依序：
 
